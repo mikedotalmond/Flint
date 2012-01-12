@@ -33,7 +33,7 @@ package org.flintparticles.integration.away3d.v4
 	import away3d.containers.ObjectContainer3D;
 	import away3d.core.base.Object3D;
 	import away3d.core.math.Vector3DUtils;
-
+	import away3d.materials.MaterialBase;
 	import org.flintparticles.common.particles.Particle;
 	import org.flintparticles.common.renderers.RendererBase;
 	import org.flintparticles.common.utils.Maths;
@@ -105,6 +105,7 @@ package org.flintparticles.integration.away3d.v4
 				if( obj.hasOwnProperty("material") )
 				{
 					var material:Object = obj["material"];
+					(material as MaterialBase).blendMode = "add"; //added - force add blendmode on everything :)
 					if( material.hasOwnProperty( "colorTransform" ) )
 					{
 						material["colorTransform"] = particle.colorTransform;
