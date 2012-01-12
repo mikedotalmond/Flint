@@ -30,6 +30,12 @@
 
 package org.flintparticles.common.initializers
 {
+	import away3d.entities.Entity;
+	import flash.events.Event;
+	import flash.events.TimerEvent;
+	import flash.utils.getTimer;
+	import flash.utils.setTimeout;
+	import flash.utils.Timer;
 	import org.flintparticles.common.emitters.Emitter;
 	import org.flintparticles.common.events.ParticleEvent;
 	import org.flintparticles.common.particles.Particle;
@@ -43,8 +49,8 @@ package org.flintparticles.common.initializers
 	{
 		protected var _usePool:Boolean;
 		protected var _pool:Array;
-		protected var _emitters:Array;
-		
+		protected var _emitters:Vector.<Emitter>;
+			
 		/**
 		 * The constructor is usually called by the constructor of the class that extends this.
 		 * 
@@ -55,8 +61,9 @@ package org.flintparticles.common.initializers
 		 */
 		public function ImageInitializerBase( usePool:Boolean = false, fillPool:uint = 0 )
 		{
+			
 			_usePool = usePool;
-			_emitters = new Array();
+			_emitters = new Vector.<Emitter>();
 			if( _usePool )
 			{
 				clearPool();
@@ -125,11 +132,12 @@ package org.flintparticles.common.initializers
 			{
 				_pool = new Array( count );
 			}
-			for( var i:int = 0; i < count; ++i )
-			{
+			
+			for( var i:int = 0; i < count; ++i ) {
 				_pool[i] = createImage();
-			}
+			}		
 		}
+		
 		
 		/**
 		 * Whether the images should be pooled for reuse when a particle dies
@@ -191,5 +199,51 @@ package org.flintparticles.common.initializers
 				particle.image = createImage();
 			}
 		}
+		
+		/**
+		 * Try not to hog the cpu if creating a large pool, or one with objects that take a fair bit of time to construct
+		 * @param	count					Size of the pool to create
+		 * @param	onPoolCreateComplete	onCompelte callback reference
+		 * @param	maxExecutionTime		max execution time before we wait a frame (10ms default)
+		 * @param	waitTime				time to wait before creating more
+		 */
+		public function fillPoolOverTime(count:uint, onPoolCreateComplete:Function, onPoolProgress:Function = null, maxExecutionTime:uint = 10, waitTime:uint = 50):void {
+			
+			_poolCreateComplete = onPoolCreateComplete;
+			_poolCreateProgress = onPoolProgress;
+			usePool 			= true;
+			
+			_pp 	= 0;
+			_et 	= maxExecutionTime;
+			_pc 	= count;
+			_pt = new Timer(waitTime, 1);
+			_pt.addEventListener(TimerEvent.TIMER, fillPoolStep, false, 0, true);
+			
+			_pool = [];
+			fillPoolStep(null);
+		}
+		
+		private function fillPoolStep(e:Event):void {
+			const t:int = getTimer();
+			
+			do { // create while under time, and pool not at capacity
+				_pool[_pp] = createImage();
+			} while (++_pp < _pc && (getTimer() - t) < _et );
+			
+			if (_pp < _pc) { // taking too long... wait
+				_pt.reset(); _pt.start();
+				if (_poolCreateProgress != null) _poolCreateProgress.call(null, _pp / _pc);
+			} else {
+				_pt.stop(); // all done
+				_poolCreateComplete.call();
+			}
+		}
+		
+		private var _pt					:Timer; // delay timer
+		private var _pp					:uint; // position
+		private var _pc					:uint; //count
+		private var _et					:int; // max execution time
+		private var _poolCreateProgress	:Function; // want to see how it's going?
+		private var _poolCreateComplete	:Function;
 	}
 }
